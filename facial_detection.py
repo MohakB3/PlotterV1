@@ -20,6 +20,67 @@ text = "Loading"
 posX = 100
 textColor = (102, 158, 239)
 
+#* Image Stacking Algorithm
+def stackImages(scale,imgArray):
+
+    rows = len(imgArray)
+
+    cols = len(imgArray[0])
+
+    rowsAvailable = isinstance(imgArray[0], list)
+
+    width = imgArray[0][0].shape[1]
+
+    height = imgArray[0][0].shape[0]
+
+    if rowsAvailable:
+
+        for x in range ( 0, rows):
+
+            for y in range(0, cols):
+
+                if imgArray[x][y].shape[:2] == imgArray[0][0].shape [:2]:
+
+                    imgArray[x][y] = cv2.resize(imgArray[x][y], (0, 0), None, scale, scale)
+
+                else:
+
+                    imgArray[x][y] = cv2.resize(imgArray[x][y], (imgArray[0][0].shape[1], imgArray[0][0].shape[0]), None, scale,scale)
+
+                if len(imgArray[x][y].shape) == 2: imgArray[x][y] = cv2.cvtColor(imgArray[x][y], cv2.COLOR_GRAY2BGR)
+
+        imageBlank = np.zeros((height, width, 3), np.uint8)
+
+        hor = [imageBlank]*rows
+
+        hor_con = [imageBlank]*rows
+
+        for x in range(0, rows):
+
+            hor[x] = np.hstack(imgArray[x])
+
+        ver = np.vstack(hor)
+
+    else:
+
+        for x in range(0, rows):
+
+            if imgArray[x].shape[:2] == imgArray[0].shape[:2]:
+
+                imgArray[x] = cv2.resize(imgArray[x], (0, 0), None, scale, scale)
+
+            else:
+
+                imgArray[x] = cv2.resize(imgArray[x], (imgArray[0].shape[1], imgArray[0].shape[0]), None, scale, scale)
+
+            if len(imgArray[x].shape) == 2: imgArray[x] = cv2.cvtColor(imgArray[x], cv2.COLOR_GRAY2BGR)
+
+        hor = np.hstack(imgArray)
+
+        ver = hor
+
+    return ver
+
 while True:
     #* Reading each frame and detecting if there's a face
     _, img = cap.read()
@@ -48,8 +109,14 @@ while True:
     draw.text((posX, 100), text, font=font, fill=textColor)
     cv2_im_processed = np.array(pil_im)
 
-    #* Display the image + escape conditions
-    cv2.imshow('Facial Recognition', cv2_im_processed)
+    #* Visual Canny Edge Detection
+    grayInternal = cv2.cvtColor(imgUnprocessed, cv2.COLOR_BGR2GRAY)
+    blurInternal = cv2.GaussianBlur(grayInternal,(5,5), 0)
+    cannyInternal = cv2.Canny(blurInternal, 55, 100)
+
+    #* Combine image output + display the image + escape conditions
+    StackedImages = stackImages(0.5,([cv2_im_processed,cannyInternal]))
+    cv2.imshow('Facial Recognition', StackedImages)
     k = cv2.waitKey(30) & 0xff
 
     #* If a face is there for more than 5 seconds, start the image processing.
@@ -122,4 +189,5 @@ with open('final_output.gcode', 'w') as outfile:
             outfile.write(infile1.read() + '\n')
             outfile.write(infile2.read() + '\n')
 
-# TODO: Add a way to send the gcode read from the final_ouput file we saved to be sent over to the Ender 3 through serial.
+#* Send the G-Code to the Ender3 through pyGcodeSender
+subprocess.call('python pyGcodeSender.py final_output.gcode', shell=True)
