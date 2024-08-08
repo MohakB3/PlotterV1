@@ -4,6 +4,8 @@ import time
 import numpy as np
 import math
 import subprocess
+import tkinter as tk
+from tkinter import ttk
 
 #* Basic Facial Recognition
 face_cascade = cv2.CascadeClassifier('haarcascade_frontalface_default.xml')
@@ -19,6 +21,36 @@ startTime = time.time()
 text = "Loading"
 posX = 100
 textColor = (102, 158, 239)
+
+#* Create Tkinter Window for UI Controls
+window = tk.Tk()
+window.title("Edge Detection Values")
+
+label1 = tk.Label(window, text = 'Canny Threshold In')
+label1.pack()
+
+cannyRampIn = tk.IntVar(value = 55)
+rampInScale = ttk.Scale(
+    window, 
+    command = lambda value: print(cannyRampIn.get()), 
+    from_ = 0, 
+    to = 200,
+    length = 300, 
+    variable = cannyRampIn)
+rampInScale.pack()
+
+label2 = tk.Label(window, text = 'Canny Threshold Out')
+label2.pack()
+
+cannyRampOut = tk.IntVar(value = 100)
+rampOutScale = ttk.Scale(
+    window, 
+    command = lambda value: print(cannyRampOut.get()), 
+    from_ = 0, 
+    to = 200,
+    length = 300, 
+    variable = cannyRampOut)
+rampOutScale.pack()
 
 #* Image Stacking Algorithm
 def stackImages(scale,imgArray):
@@ -112,7 +144,7 @@ while True:
     #* Visual Canny Edge Detection
     grayInternal = cv2.cvtColor(imgUnprocessed, cv2.COLOR_BGR2GRAY)
     blurInternal = cv2.GaussianBlur(grayInternal,(5,5), 0)
-    cannyInternal = cv2.Canny(blurInternal, 55, 100)
+    cannyInternal = cv2.Canny(blurInternal, cannyRampIn.get(), cannyRampOut.get())
 
     #* Combine image output + display the image + escape conditions
     StackedImages = stackImages(0.5,([cv2_im_processed,cannyInternal]))
@@ -125,19 +157,23 @@ while True:
         text = str(math.floor(endTime - startTime))
         if (endTime - startTime > 5):    
             print("Face Detected")
-            text = "Image Processing Started"
-            posX = 260
+            text = "Release to Start Image Processing"
+            posX = 130
 
             if startImageProcess == False:
                 cv2.imwrite("detectedImage.png", imgUnprocessed)
 
             startImageProcess = True
     elif faceExists == True and startImageProcess == True:
-        text = "Image Processing Started"
+        text = "Release to Start Image Processing"
     else:
         startTime = time.time()
 
     print("Does Face Exist:" + str(faceExists))
+
+    #* Tkinter Mainloop Replacement
+    window.update_idletasks()
+    window.update()
 
     if k == 27:
         break
@@ -150,7 +186,7 @@ image = cv2.imread('detectedImage.png')
 
 gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
 blur = cv2.GaussianBlur(gray,(5,5), 0)
-canny = cv2.Canny(blur, 55, 100)
+canny = cv2.Canny(blur, cannyRampIn.get(), cannyRampOut.get())
 
 cv2.imwrite("Canny.png", canny)
 
